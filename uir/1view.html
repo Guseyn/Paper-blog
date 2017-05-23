@@ -1,0 +1,457 @@
+<html>
+<head>
+
+<script>
+var ajax_obj = (function(){
+	var ajax;
+	if(window.ActiveXObject)
+	ajax = new ActiveXObject("Microsoft.XMLHTTP");/*IE*/
+	else ajax = new XMLHttpRequest();/*W3C*/
+	return ajax;
+})();
+var ajax = {
+
+	common:function() {
+		ajax_obj.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+		ajax_obj.setRequestHeader('Accept-Language', 'en');
+		ajax_obj.setRequestHeader('Cache-Control', 'no-cache');
+	},
+
+	post_common:function(is_acync,url){
+		ajax_obj.open('POST',url,is_acync);
+		ajax.common();
+	},
+
+	create_json:function(send_obj_name,send_obj){
+		try{
+			var json_str=send_obj_name+'='+encodeURIComponent(JSON.stringify(send_obj));
+		}catch(e){
+			/*error*/
+		}
+		return json_str;
+	},
+
+	post:function(is_acync,url,send_obj_name,send_obj,func){
+		var json_str=ajax.create_json(send_obj_name,send_obj),
+		response_obj=false;
+		ajax.post_common(is_acync,url);
+		ajax_obj.onreadystatechange=function(){
+			if(ajax_obj.readyState===4){
+				if(ajax_obj.status===200){
+					try{
+					    var ro=ajax_obj.responseText.split('for(;;);')[1];
+						response_obj=JSON.parse(ro);
+					}catch(e) {
+						response_obj = false;
+						//unknow_error
+					}
+					if(response_obj) {
+            func(response_obj);
+					}else{
+						alert("fail");
+					}
+				}else{
+					alert("fail");
+				}
+			}
+		};
+		ajax_obj.onloaded=function(){
+
+		}
+		ajax_obj.send(json_str);
+	}
+
+}
+</script>
+<style>
+button,input,select {
+  font-family: 'Times New Roman', Times, serif;
+}
+</style>
+</head>
+<body style="font-family: 'Times New Roman', Times, serif;">
+
+<div id="add_user_div" style="padding:10px;border:1px solid grey;position:fixed;
+   left:10px;bottom:10px;float:left;background:#CCCCFF;width:250px;z-index:1000;">
+   <div id="sign_in_div" style="font-weight:bold;margin-top:4px;display:none;">Sign in
+   <div>
+     <input id="fioin" type="text" placeholder="Your name" style="width:100%; margin-top:3px;"/>
+     <input id="passwordin" type="password" placeholder="Your password" style="width:100%; margin-top:3px;"/>
+   </div>
+   <button id="sign_in" style="width:100%;margin-top:5px;cursor:pointer;">Sign in</button>
+   </div>
+   <div id="sign_up_div" style="font-weight:bold;margin-top:10px;display:none;">Sign up
+   <div>
+    </div>
+     <input id="fio" type="text" placeholder="Your name" style="width:100%; margin-top:3px;"/>
+     <input id="email" type="text" placeholder="Your email" style="width:100%; margin-top:3px;"/>
+     <input id="pn" type="text" placeholder="Your phone number" style="width:100%; margin-top:3px;"/>
+     <input id="password" type="password" placeholder="Your password" style="width:100%; margin-top:3px;"/>
+     <button id="sign_up" style="width:100%;margin-top:5px;cursor:pointer;">Sign up</button>
+   </div>
+   <div id="log_out_div" style="font-weight:bold;margin-top:10px;display:none;">Log out
+     <button id="log_out" style="width:100%;margin-top:5px;cursor:pointer;">Log out</button>
+   </div>
+
+</div>
+
+  <div id = "main" style="width: 500px;
+      height: auto;
+      position: relative;
+      float:left;
+      left: 50%;  word-wrap:break-word;
+      margin-left: -250px;border:1px solid grey;padding:5px;padding-right: 11px;background:#CCCCFF;">
+      <input id="search" placeholder='Enter request' style='margin-top:4px;position: relative;padding-left:4px;position:relative; width:310px;padding:5px;font-size:17px;'  />
+      <select id="search_type" style='margin-top:4px;position: relative;padding-left:4px;position:relative; padding:5px;font-size:17px;cursor:pointer;'>
+        <option value="by_id">by id</option>
+        <option value="by_date">by date</option>
+       </select>
+      <button id = "searchButton" style='margin-top:4px;position: relative;padding-left:4px;position:relative; width:80px;padding:5px;font-size:17px;cursor:pointer;'>Search</button>
+      <button id="reload" style="margin-top:4px;position: relative;padding-left:4px;position:relative; padding:5px;font-size:14px;cursor:pointer;">Reload</button>
+      <button id="aep" style="margin-top:4px;position: relative;padding-left:4px;position:relative; padding:5px;font-size:14px;cursor:pointer;">Load AEP</button>
+      <button id="prev" style="margin-top:4px;position: relative;padding-left:4px;position:relative; padding:5px;font-size:14px;cursor:pointer;"><< Prev</button>
+      <button id="next" style="margin-top:4px;position: relative;padding-left:4px;position:relative; padding:5px;font-size:14px;cursor:pointer;">Next >></button>
+  <input id="title" placeholder='Enter title' style='margin-top:4px;position: relative;padding-left:4px;position:relative; width:100%;padding:5px;font-size:17px;'  />
+  <textarea id = 'add_text' placeholder='Enter text' type='text' style='margin-top:4px;position: relative;padding-left:4px;position:relative; width:100%;padding:5px;font-size:17px;resize:vertical;' ></textarea>
+  <button id = 'add' style='margin-top:4px;position: relative;float:right;padding:5px;font-size:17px;cursor:pointer' >Add</button>
+<div id = "content" style="width: 100%; margin-top:6px; float:left;
+    height: auto;">
+  </div>
+<div id = "add_div" style="width: 100%; height:auto">
+</div>
+</div>
+<script>
+
+var insertItem = function (obj, index) {
+  return "<div id='item_" + obj[index].id  + "' style = 'border:1px solid grey;position: relative;background:white; margin-top:2px; width:100%; height:auto;float:left;'>"
+  + "<div style='margin-bottom:3px;position: relative;float:left;padding-top:3px;padding-left:4px;' id='idtitle_" + obj[index].id  + "' ><span style='font-weight:bold;'>#" + obj[index].id + "</span> (" + obj[index].title + ")" + "</div>" +
+  "<div id = 'date_" + obj[index].id  + "' style='float:right;font-weight:bold;padding-top:3px;margin-right:3px;'>" + obj[index].date + "</div>" +
+  "<div style='margin-bottom:3px;position: relative;clear:left;border-top:solid #454545 1px;padding-top:3px;padding-left:4px;' id = 'author_" + obj[index].id +  "'><span style='font-weight:bold;'>" + obj[index].author + "</span> (<span style='font-weight:bold;'>email:</span> " + obj[index].email + ", <span style='font-weight:bold;'>phone number:</span> " + obj[index].phone_number + ")" + "</div>" +
+  "<div id = 'content_" + obj[index].id + "'  style='margin-bottom:3px;position: relative;clear:left;margin-top:4px;border-top:solid #454545 1px;padding-top:3px;padding-left:4px;' >" + obj[index].text + "</div>" +
+  "</div>";
+};
+
+var insertAEPItem = function(obj, index) {
+  return "<div id='item_" + obj[index].id  + "' style = 'border:1px solid grey;position: relative; background:white; margin-top:2px; width:100%; height:auto;float:left;padding-left:4px;'>"
+	+ "<div  id = 'du_" + obj[index].id + "' style='background-image: url(close.png);float:right;position:relative;width:24px;height:24px;right: 3;top: 3;cursor:pointer;z-index:100;' ></div>"
+	+ "<div  id = 'eu_" + obj[index].id + "' style='background-image: url(edit.png);float:right;position:relative;width:24px;height:24px;right: 3;top: 3;cursor:pointer;z-index:100;' ></div>"
+  + "<div style='margin-bottom:3px;position: relative;clear:left;' id = 'author_" + obj[index].id +  "'>" + "<span style='font-weight:bold;'>Author name:</span> " + obj[index].fio + " <br><span style='font-weight:bold;'>Email:</span> " + obj[index].email + " <br><span style='font-weight:bold;'>Phone number:</span> " + obj[index].pn + "</div>"
+	 + "</div>";
+};
+
+var index = 0;
+var mode = 'get_all_items';
+var prev = document.getElementById("prev");
+var next = document.getElementById("next");
+
+var getAllItems = function(step) {
+  ajax.post(false,'api.php','action',
+  {
+    type: 'get_all_items',
+    step: step
+  },
+  function(obj){
+    var content = document.getElementById("content");
+    var inner = "";
+    for (var i = 0; i < obj.interval; i++) {
+      inner += insertItem(obj, i);
+    }
+    if (!obj.next) {
+      next.disabled = true;
+    } else {
+      next.disabled = false;
+    }
+    if (step == 0) {
+      prev.disabled = true;
+    } else {
+      prev.disabled = false;
+    }
+    content.innerHTML = inner;
+  });
+}
+
+var searchItems = function(step) {
+  ajax.post(true,'api.php','action',
+  {
+    type: 'search_items',
+    request: document.getElementById("search").value,
+    searchType: document.getElementById("search_type").value,
+    step: step
+  },
+  function(obj){
+    var content = document.getElementById("content");
+    var inner = "";
+    for (var i = 0; i < obj.interval; i++) {
+      inner += insertItem(obj, i);
+    }
+    if (!obj.next) {
+      next.disabled = true;
+    } else {
+      next.disabled = false;
+    }
+    if (step == 0) {
+      prev.disabled = true;
+    } else {
+      prev.disabled = false;
+    }
+    content.innerHTML = inner;
+  });
+};
+
+var getAEP = function(step) {
+	console.log(getCookie("id"));
+  ajax.post(true,'api.php','action',
+  {
+    type: 'aep',
+    step: step
+  },
+  function(obj){
+    var content = document.getElementById("content");
+    content.innerHTML = "";
+    for (var i = 0; i < obj.interval; i++) {
+			content.innerHTML += insertAEPItem(obj, i);
+			var eu = document.getElementById('eu_' + obj[i].id);
+			var du = document.getElementById('du_' + obj[i].id);
+			if (getCookie("fio") === 'Guseyn' && obj[i].id != getCookie("id")) {
+				eu.style.display = '';
+				du.style.display = '';
+				var id = obj[i].id;
+				var email = obj[i].email;
+				eu.onclick = function() {
+					var newUser = prompt("Please enter data for editing properties of user with format: name:?, email: ?, pn: ?", "");
+					if (newUser != null) {
+						ajax.post(true,'api.php','action',
+						{
+							type: 'eu',
+							id: id,
+							em: email,
+							data: newUser
+						},
+						function(obj){
+							if (obj.status === 'good') {
+								mode = 'aep';
+								getAEP(index);
+							} else {
+								alert('error');
+							}
+						});
+					}
+				}
+				du.onclick = function() {
+					ajax.post(true,'api.php','action',
+					{
+						type: 'du',
+						id: id
+					},
+					function(obj){
+						if (obj.status === 'good') {
+							mode = 'aep';
+							getAEP(index);
+						} else {
+							alert('error');
+						}
+					});
+				}
+			} else {
+				eu.style.display = 'none';
+				du.style.display = 'none';
+				eu.onclick = function() {}
+				du.onclick = function() {}
+			}
+    }
+    if (!obj.next) {
+      next.disabled = true;
+    } else {
+      next.disabled = false;
+    }
+    if (step == 0) {
+      prev.disabled = true;
+    } else {
+      prev.disabled = false;
+    }
+
+  });
+};
+
+var addButton = document.getElementById("add");
+
+addButton.onclick = function() {
+  console.log({
+      type: 'add_item',
+      title: document.getElementById("title").value,
+      author: getCookie("fio"),
+      email: getCookie("email"),
+      phone_number: getCookie("pn"),
+      text: document.getElementById("add_text").value
+    });
+  ajax.post(true,'api.php','action',
+  {
+    type: 'add_item',
+    title: document.getElementById("title").value,
+    author: getCookie("fio"),
+    email: getCookie("email"),
+    phone_number: getCookie("pn"),
+    text: document.getElementById("add_text").value
+  },
+  function(obj){
+    var content = document.getElementById("content");
+    var inner = "";
+    inner = insertItem(obj, 0) + content.innerHTML;
+    content.innerHTML = inner;
+    document.getElementById("title").value = "";
+    document.getElementById("add_text").value = "";
+    index = 0;
+    mode = 'get_all_items';
+    getAllItems(index);
+  });
+}
+
+var searchButton = document.getElementById("searchButton");
+
+searchButton.onclick = function() {
+  index = 0;
+  mode = 'search_items';
+  searchItems(index);
+}
+
+prev.onclick = function() {
+  index--;
+  if (mode === 'get_all_items') {
+    getAllItems(index);
+  } else if (mode === 'search_items') {
+    searchItems(index);
+  } else if (mode === 'aep') {
+    getAEP(index);
+  }
+}
+
+next.onclick = function() {
+  index++;
+  if (mode === 'get_all_items') {
+    getAllItems(index);
+  } else if (mode === 'search_items') {
+    searchItems(index);
+  } else if (mode === 'aep') {
+    getAEP(index);
+  }
+}
+
+function reload() {
+	index = 0;
+	mode = 'get_all_items';
+	getAllItems(index);
+	document.getElementById("title").value = "";
+	document.getElementById("search").value = "";
+	document.getElementById("add_text").value = "";
+}
+
+document.getElementById("reload").onclick = function() {
+   reload();
+}
+
+document.getElementById("aep").onclick = function() {
+  index = 0;
+  mode = 'aep';
+  getAEP(index);
+}
+
+document.getElementById("sign_up").onclick = function() {
+  ajax.post(true,'api.php','action',
+  {
+    type: 'add_user',
+    fio: document.getElementById("fio").value,
+    email: document.getElementById("email").value,
+    password: document.getElementById("password").value,
+    pn: document.getElementById("pn").value
+  },
+  function(obj){
+    if (obj.status === 'good') {
+			setCookie("id", obj[0].id, 1);
+      setCookie("fio", obj[0].fio, 1);
+      setCookie("email", obj[0].email, 1);
+      setCookie("pn", obj[0].pn, 1);
+      addButton.disabled = false;
+      document.getElementById("sign_up_div").style.display = 'none';
+      document.getElementById("sign_in_div").style.display = 'none';
+      document.getElementById("log_out_div").style.display = '';
+			reload();
+    } else {
+      alert(obj.status);
+    }
+  });
+}
+
+document.getElementById("sign_in").onclick = function() {
+  ajax.post(true,'api.php','action',
+  {
+    type: 'sign_in',
+    fio: document.getElementById("fioin").value,
+    password: document.getElementById("passwordin").value
+  },
+  function(obj){
+    if (obj.status === 'good') {
+			setCookie("id", obj[0].id, 1);
+      setCookie("fio", obj[0].fio, 1);
+      setCookie("email", obj[0].email, 1);
+      setCookie("pn", obj[0].pn, 1);
+      addButton.disabled = false;
+      document.getElementById("sign_up_div").style.display = 'none';
+      document.getElementById("sign_in_div").style.display = 'none';
+      document.getElementById("log_out_div").style.display = '';
+			reload();
+    } else {
+      alert(obj.status);
+    }
+  });
+}
+
+document.getElementById("log_out").onclick = function() {
+  deleteCookie("fio");
+  deleteCookie("email");
+  deleteCookie("pn");
+  addButton.disabled = true;
+  document.getElementById("sign_up_div").style.display = '';
+  document.getElementById("sign_in_div").style.display = '';
+  document.getElementById("log_out_div").style.display = 'none';
+	reload();
+}
+
+function setCookie(cname, cvalue, exdays) {
+    var d = new Date();
+    d.setTime(d.getTime() + (exdays*24*60*60*1000));
+    var expires = "expires="+d.toUTCString();
+    document.cookie = cname + "=" + cvalue + "; " + expires;
+}
+
+function deleteCookie(cname) {
+    setCookie(cname, '', -1);
+}
+
+function getCookie(cname) {
+    var name = cname + "=";
+    var ca = document.cookie.split(';');
+    for(var i=0; i<ca.length; i++) {
+        var c = ca[i];
+        while (c.charAt(0)==' ') c = c.substring(1);
+        if (c.indexOf(name) == 0) return c.substring(name.length,c.length);
+    }
+    return "";
+}
+
+mode = 'get_all_items';
+getAllItems(index);
+if (getCookie("fio") == "") {
+  addButton.disabled = true;
+  document.getElementById("sign_up_div").style.display = '';
+  document.getElementById("sign_in_div").style.display = '';
+  document.getElementById("log_out_div").style.display = 'none';
+} else {
+  addButton.disabled = false;
+  document.getElementById("sign_up_div").style.display = 'none';
+  document.getElementById("sign_in_div").style.display = 'none';
+  document.getElementById("log_out_div").style.display = '';
+}
+
+</script>
+</body>
+</html>

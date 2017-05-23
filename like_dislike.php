@@ -1,0 +1,135 @@
+<?php
+include('filter_post_array.php');
+$post_array=json_decode(urldecode($_POST['to_like_dislike']));
+$post_array=check_filter_input($post_array);
+if(isset($post_array)&&$post_array){
+	$ajax_response=array();
+	unset($_POST['to_like_dislike']);
+	$hash_sess_id=$_COOKIE['hash'];
+	if(isset($_COOKIE['hash'])){
+		include('sql_lib.php');
+		$s_w=new sql_work();
+		if($NP=$s_w->connect()){
+			mysqli_autocommit($NP,false);
+			include('get_user_id.php');
+			if($user_id=get_user_id($NP,$s_w,$hash_sess_id,false,false)){
+				if($user_id!=='not_able'){
+					include('work_with_compressed_str.php');
+					$test=isset_elm_in_table($NP,$s_w,$post_array->pab_id,'pablications');
+					$post_array->pab_id*=1;
+					if($test&&!empty($test)&&is_int($post_array->pab_id)){
+						if(($like_dislike_ussd_compressed_str=get_compressed_str($NP,$s_w,$user_id,'likes,dislikes','ussd'))
+						&&($like_dislike_pablications_compressed_str=get_compressed_str($NP,$s_w,$post_array->pab_id,'likes,dislikes','pablications'))){
+							$like_index=$post_array->like_index;
+							if($like_index==='like'){
+								$liked_ussd_str=change_compressed_str($like_dislike_ussd_compressed_str['likes'],$post_array->pab_id);
+								$liked_pablications_str=change_compressed_str($like_dislike_pablications_compressed_str['likes'],$user_id);
+								if(($liked_ussd_str['act']==='added')&&($liked_pablications_str['act']==='added')){
+									if(($disliked_ussd_str=delete_from_compressed_str($like_dislike_ussd_compressed_str['dislikes'],$post_array->pab_id))
+									&&($disliked_pablications_str=delete_from_compressed_str($like_dislike_pablications_compressed_str['dislikes'],$user_id))){
+										if(update_compressed_str($NP,$s_w,$user_id,'likes,dislikes','ussd',array($liked_ussd_str['compr_str'],$disliked_ussd_str),array('',''),array(0,0))){
+											if(update_compressed_str($NP,$s_w,$post_array->pab_id,'likes,dislikes','pablications',array($liked_pablications_str['compr_str'],$disliked_pablications_str),array('lq','dlq'),array('+','-'))){
+												$ajax_response['liked']=true;
+												$ajax_response['disliked']=false;
+												$ajax_response['like_diff']=1;
+												$ajax_response['dislike_diff']=-1;
+												$ajax_response['status']='good';
+											}else{
+												$ajax_response['status']='error#'.__LINE__;
+										}}else{
+											$ajax_response['status']='error#'.__LINE__;
+									}}else{
+										if(update_compressed_str($NP,$s_w,$user_id,'likes','ussd',$liked_ussd_str['compr_str'],'',0)){
+											if(update_compressed_str($NP,$s_w,$post_array->pab_id,'likes','pablications',$liked_pablications_str['compr_str'],'lq','+')){
+												$ajax_response['liked']=true;
+												$ajax_response['disliked']=false;
+												$ajax_response['like_diff']=1;
+												$ajax_response['dislike_diff']=0;
+												$ajax_response['status']='good';
+											}else{
+												$ajax_response['status']='error#'.__LINE__;
+										}}else{
+											$ajax_response['status']='error#'.__LINE__;
+									}}}else if(($liked_ussd_str['act']==='deleted')&&($liked_pablications_str['act']==='deleted')){
+										if(update_compressed_str($NP,$s_w,$user_id,'likes','ussd',$liked_ussd_str['compr_str'],'',0)){
+											if(update_compressed_str($NP,$s_w,$post_array->pab_id,'likes','pablications',$liked_pablications_str['compr_str'],'lq','-')){
+												$ajax_response['liked']=false;
+												$ajax_response['disliked']=false;
+												$ajax_response['like_diff']=-1;
+												$ajax_response['dislike_diff']=0;
+												$ajax_response['status']='good';
+											}else{
+												$ajax_response['status']='error#'.__LINE__;
+										}}else{
+											$ajax_response['status']='error#'.__LINE__;
+									}}else{
+										$ajax_response['status']='error#'.__LINE__;
+								}}else if($like_index==='dislike'){
+									$disliked_ussd_str=change_compressed_str($like_dislike_ussd_compressed_str['dislikes'],$post_array->pab_id);
+									$disliked_pablications_str=change_compressed_str($like_dislike_pablications_compressed_str['dislikes'],$user_id);
+									if(($disliked_ussd_str['act']==='added')&&($disliked_pablications_str['act']==='added')){
+										if(($liked_ussd_str=delete_from_compressed_str($like_dislike_ussd_compressed_str['likes'],$post_array->pab_id))
+										&&($liked_pablications_str=delete_from_compressed_str($like_dislike_pablications_compressed_str['likes'],$user_id))){
+											if(update_compressed_str($NP,$s_w,$user_id,'likes,dislikes','ussd',array($liked_ussd_str,$disliked_ussd_str['compr_str']),array('',''),array(0,0))){
+												if(update_compressed_str($NP,$s_w,$post_array->pab_id,'likes,dislikes','pablications',array($liked_pablications_str,$disliked_pablications_str['compr_str']),array('lq','dlq'),array('-','+'))){
+													$ajax_response['liked']=false;
+													$ajax_response['disliked']=true;
+													$ajax_response['like_diff']=-1;
+													$ajax_response['dislike_diff']=1;
+													$ajax_response['status']='good';
+												}else{
+													$ajax_response['status']='error#'.__LINE__;
+											}}else{
+												$ajax_response['status']='error#'.__LINE__;
+										}}else{
+											if(update_compressed_str($NP,$s_w,$user_id,'dislikes','ussd',$disliked_ussd_str['compr_str'],'',0)){
+												if(update_compressed_str($NP,$s_w,$post_array->pab_id,'dislikes','pablications',$disliked_pablications_str['compr_str'],'dlq','+')){
+													$ajax_response['liked']=false;
+													$ajax_response['disliked']=true;
+													$ajax_response['like_diff']=0;
+													$ajax_response['dislike_diff']=1;
+													$ajax_response['status']='good';
+												}else{
+													$ajax_response['status']='error#'.__LINE__;
+											}}else{
+												$ajax_response['status']='error#'.__LINE__;
+										}}}else if(($disliked_ussd_str['act']==='deleted')&&($disliked_pablications_str['act']==='deleted')){
+											if(update_compressed_str($NP,$s_w,$user_id,'dislikes','ussd',$disliked_ussd_str['compr_str'],'',0)){
+												if(update_compressed_str($NP,$s_w,$post_array->pab_id,'dislikes','pablications',$disliked_pablications_str['compr_str'],'dlq','-')){
+													$ajax_response['liked']=false;
+													$ajax_response['disliked']=false;
+													$ajax_response['like_diff']=0;
+													$ajax_response['dislike_diff']=-1;
+													$ajax_response['status']='good';
+												}else{
+													$ajax_response['status']='error#'.__LINE__;
+											}}else{
+												$ajax_response['status']='error#'.__LINE__;
+										}}else{
+											$ajax_response['status']='error#'.__LINE__;
+									}}else{
+										$ajax_response['status']='error#'.__LINE__;
+								}}else{
+									$ajax_response['status']='error#'.__LINE__;
+							}}else{
+								$ajax_response['status']='error#'.__LINE__;
+						}}else{
+							$ajax_response['status']='not_able';
+					}}else{
+						$ajax_response['status']='no_sess';
+						setcookie('hash',$hash_sess_id, time()-3600, '/','.paper-blog.ru', false,true);
+					}
+					if($ajax_response['status']==='good'){
+						mysqli_commit($NP);
+					}else{
+						mysqli_rollback($NP);
+					}
+					$s_w->sql_close($NP);
+      }else{
+       	$ajax_response['status']='error#'.__LINE__;
+	}}else{
+		$ajax_response['status']='no_sess'; 
+	}
+echo 'for(;;);'.json_encode($ajax_response); 
+}
+?>
